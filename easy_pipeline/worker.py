@@ -2,6 +2,7 @@
 
 from .task import Task, EmptyTask, StopTask
 import multiprocessing as mp
+import types
 
 
 class Worker(object):
@@ -44,4 +45,22 @@ class SimpleWorkerProcess(mp.Process):
                 self.result_queue.put(StopTask())
                 break
             result = self.worker.process(task)
-            self.result_queue.put(result)
+
+            # the result can be:
+            #   1. None, means do not want to output result
+            #   2. Task, means output one result
+            #   3. List or Generator, means output more than one results
+
+            if result is None:
+                continue
+
+            if isinstance(result, Task):
+                self.result_queue.put(result)
+                continue
+
+            if isinstance(result, list) or isinstance(result, types.GeneratorType):
+                for r in result:
+                    self.result_queue.put(r)
+                continue
+
+            raise Exception("Illegal output type: {}".format(type(result)))
