@@ -15,8 +15,6 @@ def get_init_fn(x):
         return x
     return init
 
-# 由于
-
 
 def plus(res, task):
     result = task.val + res
