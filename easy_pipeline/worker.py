@@ -32,17 +32,20 @@ class SimpleWorker(Worker):
 
 
 class SimpleWorkerProcess(mp.Process):
-    def __init__(self, work_fn, init_fn, job_queue, result_queue):
+    def __init__(self, work_fn, init_fn, job_queue, result_queue, curr_worker_num, next_worker_num):
         super(SimpleWorkerProcess, self).__init__()
         self.worker = SimpleWorker(work_fn, init_fn)
         self.job_queue = job_queue
         self.result_queue = result_queue
+        self.curr_worker_num = curr_worker_num
+        self.next_worker_num = next_worker_num
 
     def run(self):
         while True:
             task = self.job_queue.get()
             if isinstance(task, StopTask):
-                self.result_queue.put(StopTask())
+                with self.curr_worker_num.get_lock():
+                    self.curr_worker_num.value -= 1
                 break
             result = self.worker.process(task)
 
@@ -64,3 +67,7 @@ class SimpleWorkerProcess(mp.Process):
                 continue
 
             raise Exception("Illegal output type: {}".format(type(result)))
+
+        if self.curr_worker_num.value == 0:
+            for _ in range(self.next_worker_num.value):
+                self.result_queue.put(StopTask())
